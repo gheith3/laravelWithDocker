@@ -91,7 +91,7 @@ CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/conf.d/supervisord.con
 ```
 
 Docker Entrypoint Script
-Create a docker-entrypoint.sh file:
+Create a `docker-entrypoint.sh` file:
 
 ```docker-entrypoint
 #!/bin/bash
@@ -115,7 +115,7 @@ exec "$@"
 ```
 
 Supervisor Configuration
-Create a supervisord.conf file:
+Create a `supervisord.conf` file:
 
 ```supervisord
 [supervisord]
@@ -143,7 +143,7 @@ stderr_logfile=/var/www/html/storage/logs/%(program_name)s_%(process_num)02d_err
 ```
 
 Docker Compose Configuration
-Create a docker-compose.yml file:
+Create a `docker-compose.yml` file:
 
 ```docker-compose
 services:
