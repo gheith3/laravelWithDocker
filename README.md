@@ -4,7 +4,7 @@
 
 `FROM php:8.2.12-apache
 
-# Install dependencies including Git and Supervisor
+
 RUN apt-get update && \
 apt-get install -y \
 libzip-dev \
@@ -20,66 +20,65 @@ curl \
 git \
 supervisor
 
-# Enable mod_rewrite for Apache
+
 RUN a2enmod rewrite
 
-# Install PHP extensions
+
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
 && docker-php-ext-install pdo_mysql zip intl gd exif pcntl bcmath opcache
 
-# Install Node.js 18.x and npm
+
 RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
 && apt-get install -y nodejs
 
-# Set the document root to Laravel's public directory
+
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
-# Set ServerName to localhost to prevent Apache warning
+
 RUN echo "ServerName localhost" >> /etc/apache2/conf-available/servername.conf && \
 a2enconf servername
 
-# Set the working directory
+
 WORKDIR /var/www/html
 
-# Install Composer
+
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-# Set environment variable to allow Composer to run as root
+
 ENV COMPOSER_ALLOW_SUPERUSER=1
 
-# Install Composer dependencies first to optimize Docker layer caching
+
 COPY composer.json composer.lock /var/www/html/
 RUN composer install --no-interaction --no-plugins --no-scripts
 
-# Copy the rest of the application code
+
 COPY . /var/www/html
 
-# Install npm dependencies and build assets
+
 RUN npm install && npm run build
 
-# Ensure storage and bootstrap/cache directories exist and are writable
+
 RUN mkdir -p /var/www/html/storage /var/www/html/bootstrap/cache \
 && chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
 && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Set correct ownership for www-data
+
 RUN chown -R www-data:www-data /var/www/html
 
 RUN mkdir -p /etc/supervisor
-# Copy Supervisor configuration
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Expose port 80
+
 EXPOSE 80
 
-# Use the custom entrypoint script
+
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 ENTRYPOINT ["docker-entrypoint.sh"]
 
-# Set the default command to run Supervisor
+
 CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/conf.d/supervisord.conf"]`
 
 * create docker-entrypoint.sh
@@ -87,20 +86,17 @@ CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/conf.d/supervisord.con
 `#!/bin/bash
 set -e
 
-# Ensure log directory exists and has correct permissions
+
 mkdir -p /var/www/html/storage/logs
 chown -R www-data:www-data /var/www/html/storage
 chmod -R 775 /var/www/html/storage
 
-# Run any necessary initialization steps
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 
-# Start Supervisor in the background
 /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf &
 
-# Execute the main command (likely to be apache2-foreground)
 exec "$@"`
 
 * create supervisord.conf
